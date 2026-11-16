@@ -1,0 +1,8 @@
+1. Ekspektasi jadi konkret, bukan opini. "Query 'terigu' mengembalikan produk yang mengandung 'terigu'" bisa langsung diterjemahkan menjadi test case dengan input dan output pasti. "Gampang nyari" hanya bisa dinilai secara subjektif.
+2. Edge case sudah didefinisikan lebih dulu. Input kosong, typo, karakter khusus, dan hasil kosong disebut eksplisit — sehingga penguji tahu harus menguji apa, dan developer tidak perlu menebak perilaku yang "wajar".
+3. Aturan urutan dan batas jumlah dapat diverifikasi. "Maks 20 item, skor relevansi, tie-breaker A–Z" adalah aturan deterministik. Tanpa itu, urutan hasil hanya bisa dinilai "kelihatannya oke".
+4. Ambang performa terukur. "< 300 ms untuk 1.000 produk" adalah kriteria lulus/gagal, sedangkan "cepat" tidak bisa diuji sama sekali.
+5. Batas ruang lingkup mencegah pengujian melebar. Daftar "di luar ruang lingkup" membuat penguji tidak perlu menguji filter harga atau rekomendasi, dan mencegah debat "ini harusnya termasuk atau tidak".
+6. Konsisten dan dapat diulang. Prompt terstruktur menghasilkan implementasi yang sama setiap kali dijalankan ulang, sehingga hasil tes bisa dibandingkan antarversi (regression) — sedangkan prompt ambigu bisa menghasilkan implementasi berbeda tiap kali, membuat tes tidak stabil.
+
+Singkatnya: prompt ambigu memindahkan keputusan desain ke implementasi (dan ke penilaian manusia), sedangkan prompt terstruktur memindahkannya ke spesifikasi — dan hanya spesifikasi yang bisa diubah menjadi assertion.
