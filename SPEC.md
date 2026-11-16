@@ -19,7 +19,7 @@ Pengunjung dapat mencari dan memfilter produk, mengurutkan hasil, memilih produk
 
 Dashboard menyediakan ringkasan inventori serta fungsi tambah, edit, hapus, dan reset data produk. Data produk disimpan pada `localStorage` browser.
 
-**Batasan demo:** Konten produk dan identitas merek ditampilkan untuk keperluan demonstrasi antarmuka. Aplikasi ini bukan sistem transaksi, pembayaran, atau pengelolaan penjualan nyata. Tidak tersedia autentikasi maupun otorisasi; dashboard dapat diakses melalui halaman yang sama.
+**Batasan demo:** Konten produk dan identitas merek ditampilkan untuk keperluan demonstrasi antarmuka. Aplikasi ini bukan sistem transaksi, pembayaran, atau pengelolaan penjualan nyata. Login dan role (admin, seller, buyer) tersedia di sisi klien untuk membatasi antarmuka; lihat bagian 2.
 
 ### 1.2 Tujuan Aplikasi
 
@@ -37,7 +37,23 @@ Dashboard menyediakan ringkasan inventori serta fungsi tambah, edit, hapus, dan 
 
 ## 2. Target Pengguna dan Hak Akses
 
-Aplikasi tidak menerapkan sistem akun atau pembagian hak akses secara teknis. Istilah berikut menjelaskan penggunaan antarmuka, bukan role yang dilindungi autentikasi.
+Aplikasi memiliki login dan tiga role (`src/auth.js`). Akun dan sesi disimpan di `localStorage`; ini **hanya membatasi antarmuka demo, bukan keamanan sungguhan** — pengguna yang membuka DevTools dapat mengubahnya. Untuk produksi, autentikasi dan pengecekan izin harus dipindahkan ke backend.
+
+| Izin | Tamu | Buyer | Seller | Admin |
+|---|:-:|:-:|:-:|:-:|
+| Lihat katalog, keranjang, pesan via WhatsApp | ✓ | ✓ | ✓ | ✓ |
+| Akses dashboard | – | – | ✓ (produk sendiri) | ✓ (semua) |
+| Tambah produk | – | – | ✓ | ✓ |
+| Edit / hapus produk | – | – | hanya miliknya | semua |
+| Ekspor JSON | – | – | ✓ (miliknya) | ✓ |
+| Impor JSON, Reset data | – | – | – | ✓ |
+| Kelola pengguna (ubah role, hapus akun) | – | – | – | ✓ |
+
+- Pendaftaran publik hanya untuk **Buyer** atau **Seller**; admin tidak dapat dibuat lewat pendaftaran.
+- Setiap produk memiliki `sellerId` (id akun). Produk tanpa `sellerId` dikelola admin.
+- Admin tidak dapat mengubah role/menghapus akunnya sendiri, dan minimal harus ada satu admin.
+- Kata sandi disimpan sebagai hash SHA-256 + salt (bukan teks biasa), tetapi tetap di browser.
+- Akun demo: `admin@dabronx.test / admin123`, `seller@dabronx.test / seller123` (pemilik produk 1–4), `seller2@dabronx.test / seller123` (produk 5–8), `buyer@dabronx.test / buyer123`.
 
 ### 2.1 Pengunjung
 
@@ -65,7 +81,7 @@ Pengguna dashboard dapat:
 - Mengunggah atau menghapus foto produk.
 - Mengembalikan data ke data awal melalui tombol Reset.
 
-**Batasan akses:** Dashboard tidak dilindungi login. Siapa pun yang dapat membuka halaman dapat menggunakan fungsi pengelolaan produk pada browser tersebut.
+**Batasan akses:** Dashboard hanya tampil untuk seller dan admin yang sudah login. Pembatasan ini hanya di sisi klien (lihat peringatan di atas).
 
 ---
 
@@ -678,7 +694,7 @@ Batasan yang terlihat pada implementasi saat ini:
 - Tautan WhatsApp tidak mengirim pesan secara otomatis.
 - Tidak ada WhatsApp Business API.
 - Tidak ada payment gateway, pembayaran, atau pemrosesan transaksi.
-- Dashboard dapat diakses oleh pengunjung karena tidak ada sistem login.
+- Autentikasi dan role hanya berjalan di browser (localStorage); tidak aman untuk produksi.
 
 ---
 
@@ -688,8 +704,7 @@ Fitur berikut tidak tersedia pada implementasi saat ini:
 
 - Backend API.
 - Database MySQL, PostgreSQL, atau database server lainnya.
-- Sistem autentikasi dan otorisasi.
-- Role-based access control.
+- Autentikasi dan otorisasi di sisi server (saat ini hanya simulasi sisi klien).
 - Multi-user dan sinkronisasi data.
 - Keranjang persisten.
 - Pengelolaan pesanan.

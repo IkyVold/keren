@@ -1,5 +1,6 @@
 import { WHATSAPP_NUMBER } from "./products.js";
 import * as Store from "./store.js";
+import * as Auth from "./auth.js";
 
 const { state } = Store;
 const $ = (s) => document.querySelector(s);
@@ -45,6 +46,7 @@ function renderCatalog() {
       <div class="body">
         <span class="cat">${esc(p.cat)}</span>
         <h3>${esc(p.name)}</h3>
+        <p class="by">Dijual oleh ${esc(Auth.getUserName(p.sellerId) || "Da Bronx")}</p>
         <p class="desc">${esc(p.desc)}</p>
         <div class="foot">
           <div><div class="price">${usd(p.price)}</div><div class="stock" style="${p.stock <= 0 ? "color:var(--red)" : ""}">${p.stock > 0 ? "Stok: " + p.stock : "Stok habis"}</div></div>
@@ -61,15 +63,19 @@ function countTo(el, to) {
   const t0 = performance.now(), d = 900;
   (function step(t) { const k = Math.min(1, (t - t0) / d), e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); })(t0);
 }
+const me = () => Auth.currentUser();
+const allowed = (action, product) => Auth.can(me(), action, product);
+function deny() { toast("Akses ditolak untuk role Anda."); }
+
 function renderDash() {
-  const ps = state.products;
+  const ps = Auth.dashboardProducts(state.products, me());
   countTo($("#dTotal"), ps.length);
   countTo($("#dStock"), ps.reduce((a, p) => a + p.stock, 0));
   countTo($("#dCat"), new Set(ps.map((p) => p.cat)).size);
   $("#tbody").innerHTML = ps.length ? ps.map((p) => `
-    <tr><td><div class="pname">${p.img ? `<img class="thumb" src="${p.img}" alt="">` : `<div class="thumb thumb-ph">🔫</div>`}<b>${esc(p.name)}</b></div></td><td>${esc(p.cat)}</td><td>${usd(p.price)}</td><td>${p.stock}</td>
+    <tr><td><div class="pname">${p.img ? `<img class="thumb" src="${p.img}" alt="">` : `<div class="thumb thumb-ph">🔫</div>`}<b>${esc(p.name)}</b></div></td><td>${esc(Auth.getUserName(p.sellerId) || "Da Bronx")}</td><td>${esc(p.cat)}</td><td>${usd(p.price)}</td><td>${p.stock}</td>
     <td><span class="status ${p.stock > 0 ? "" : "out"}">${p.stock > 0 ? "Tersedia" : "Habis"}</span></td>
-    <td><button class="edit" data-action="edit" data-id="${p.id}">Edit</button><button class="del" data-action="delete" data-id="${p.id}">Hapus</button></td></tr>`).join("") : `<tr><td colspan="6" class="empty">Belum ada produk. Klik “Tambah Produk”.</td></tr>`;
+    <td>${allowed("product.edit", p) ? `<button class="edit" data-action="edit" data-id="${p.id}">Edit</button>` : ""}${allowed("product.delete", p) ? `<button class="del" data-action="delete" data-id="${p.id}">Hapus</button>` : ""}</td></tr>`).join("") : `<tr><td colspan="7" class="empty">Belum ada produk. Klik “Tambah Produk”.</td></tr>`;
 }
 
 /* ===== Keranjang / drawer ===== */
@@ -115,6 +121,8 @@ function setPreview(src) {
   $("#rmImg").style.display = src ? "inline" : "none";
 }
 function openForm(id) {
+  const target = id != null ? Store.findProduct(id) : null;
+  if (id != null ? !allowed("product.edit", target) : !allowed("product.create")) return deny();
   editId = id ?? null;
   const p = editId != null ? Store.findProduct(editId) : null;
   $("#mTitle").textContent = p ? "Edit Produk" : "Tambah Produk";
@@ -152,6 +160,7 @@ async function handleFile(f) {
 
 function submitForm(e) {
   e.preventDefault();
+  if (editId != null ? !allowed("product.edit", Store.findProduct(editId)) : !allowed("product.create")) { closeForm(); return deny(); }
   const r = Store.validateProduct(
     { name: $("#pName").value, cat: $("#pCat").value, price: $("#pPrice").value, stock: $("#pStock").value },
     state.products
@@ -159,21 +168,103 @@ function submitForm(e) {
   if (r.error) { $("#pErr").textContent = r.error; return; }
   const data = { ...r.value, desc: $("#pDesc").value.trim(), feat: $("#pFeat").checked, img: curImg };
   if (editId != null) { Store.updateProduct(editId, data); toast("Produk diperbarui ✓"); }
-  else { Store.addProduct(data); toast("Produk ditambahkan ✓"); }
+  else { Store.addProduct({ ...data, sellerId: me().id }); toast("Produk ditambahkan ✓"); }
   // kosongkan pencarian & filter kategori agar perubahan langsung terlihat di katalog publik
   $("#q").value = ""; $("#cat").value = "";
   persist(); closeForm(); renderDash(); update();
 }
 function deleteProduct(id) {
   const p = Store.findProduct(id); if (!p) return;
+  if (!allowed("product.delete", p)) return deny();
   if (!confirm(`Hapus "${p.name}"?`)) return;
   Store.removeProduct(id);
   persist(); renderDash(); update(); toast("Produk dihapus");
 }
 function resetData() {
+  if (!allowed("data.reset")) return deny();
   if (!confirm("Kembalikan semua produk ke data awal? Perubahan Anda akan hilang.")) return;
   Store.resetProducts();
   persist(); renderDash(); update(); toast("Data dikembalikan");
+}
+
+
+/* ===== Ekspor / impor (impor hanya admin karena mengganti seluruh data) ===== */
+function exportData() {
+  if (!allowed("data.export")) return deny();
+  const data = Auth.dashboardProducts(state.products, me());
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  a.download = "dabronx-produk.json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function importData(file) {
+  if (!allowed("data.import")) return deny();
+  if (!file) return;
+  let parsed;
+  try { parsed = JSON.parse(await file.text()); } catch (e) { return toast("File JSON tidak dapat dibaca."); }
+  const r = Store.validateProductList(parsed);
+  if (!r.ok) return toast("Impor ditolak: " + r.errors[0]);
+  if (!confirm(`Ganti seluruh data dengan ${r.products.length} produk dari file?`)) return;
+  if (!Store.replaceProducts(r.products)) return toast("Gagal menyimpan impor.");
+  renderDash(); update(); toast("Data diimpor ✓");
+}
+
+/* ===== Auth UI ===== */
+let authTab = "login";
+function setAuthTab(tab) {
+  authTab = tab;
+  $("#authTitle").textContent = tab === "login" ? "Masuk" : "Daftar Akun";
+  $("#authSubmit").textContent = tab === "login" ? "Masuk" : "Daftar";
+  $("#tabLogin").setAttribute("aria-selected", tab === "login");
+  $("#tabRegister").setAttribute("aria-selected", tab === "register");
+  $("#aPass").autocomplete = tab === "login" ? "current-password" : "new-password";
+  document.querySelectorAll("#authForm [data-only]").forEach((el) => { el.hidden = el.dataset.only !== tab; });
+  $("#authErr").textContent = "";
+}
+function openAuth(tab = "login") { setAuthTab(tab); $("#authForm").reset(); $("#authOv").classList.add("open"); setTimeout(() => (tab === "login" ? $("#aEmail") : $("#aName")).focus(), 50); }
+function closeAuth() { $("#authOv").classList.remove("open"); }
+
+async function submitAuth(e) {
+  e.preventDefault();
+  const btn = $("#authSubmit"); btn.disabled = true;
+  try {
+    const r = authTab === "login"
+      ? await Auth.login($("#aEmail").value, $("#aPass").value)
+      : await Auth.register({ name: $("#aName").value, email: $("#aEmail").value, password: $("#aPass").value, role: $("#aRole").value });
+    if (r.error) { $("#authErr").textContent = r.error; return; }
+    closeAuth(); renderAuth(); toast(`Halo, ${r.user.name} (${Auth.ROLE_LABEL[r.user.role]})`);
+    if (location.hash === "#dashboard" && !allowed("dashboard")) history.replaceState(null, "", "#home");
+  } finally { btn.disabled = false; }
+}
+function doLogout() {
+  Auth.logout(); Object.keys(state.cart).forEach((k) => delete state.cart[k]);
+  if (location.hash === "#dashboard") history.replaceState(null, "", "#home");
+  renderAuth(); update(); toast("Anda telah keluar");
+}
+
+function renderUsers() {
+  const panel = $("#usersPanel"), show = allowed("users.manage");
+  panel.hidden = !show; if (!show) return;
+  $("#utbody").innerHTML = Auth.listUsers().map((u) => {
+    const self = u.id === me().id;
+    return `<tr><td>${esc(u.name)}${self ? " <small>(Anda)</small>" : ""}</td><td>${esc(u.email)}</td>
+      <td><select data-user-role="${u.id}" aria-label="Role ${esc(u.name)}" ${self ? "disabled" : ""}>${Object.values(Auth.ROLES).map((r) => `<option value="${r}" ${r === u.role ? "selected" : ""}>${Auth.ROLE_LABEL[r]}</option>`).join("")}</select></td>
+      <td>${self ? "" : `<button class="del" data-action="user-delete" data-id="${u.id}">Hapus</button>`}</td></tr>`;
+  }).join("");
+}
+
+/** Sinkronkan seluruh antarmuka dengan pengguna yang sedang login. */
+function renderAuth() {
+  const u = me(), canDash = allowed("dashboard");
+  $("#authSlot").innerHTML = u
+    ? `<div class="user-chip"><span class="uname">${esc(u.name)}</span><span class="role-tag ${u.role}">${Auth.ROLE_LABEL[u.role]}</span><button class="auth-btn" data-action="logout">Keluar</button></div>`
+    : `<button class="auth-btn" data-action="auth-open">Masuk</button>`;
+  $("#heroLogin").hidden = !!u;
+  $("#navDash").hidden = !canDash; $("#heroDash").hidden = !canDash;
+  $("#dashboard").hidden = !canDash;
+  document.querySelectorAll("[data-perm]").forEach((el) => { el.hidden = !allowed(el.dataset.perm); });
+  if (u) $("#custName").value = $("#custName").value || u.name;
+  $("#roleBadge").textContent = u ? `● ${Auth.ROLE_LABEL[u.role]}${u.role === "seller" ? " — produk saya" : ""}` : "● Demo Dashboard";
+  renderDash(); renderUsers(); buildWA();
 }
 
 /* ===== Event: delegasi data-action (pengganti onclick inline) ===== */
@@ -191,6 +282,19 @@ function onClick(e) {
     case "edit": openForm(id); break;
     case "delete": deleteProduct(id); break;
     case "reset-data": resetData(); break;
+    case "auth-open": openAuth(); break;
+    case "auth-close": closeAuth(); break;
+    case "auth-tab": setAuthTab(el.dataset.tab); break;
+    case "auth-fill": $("#aEmail").value = el.dataset.email; $("#aPass").value = el.dataset.pass; $("#authErr").textContent = ""; break;
+    case "logout": doLogout(); break;
+    case "export-json": exportData(); break;
+    case "import-json": if (allowed("data.import")) $("#importFile").click(); else deny(); break;
+    case "user-delete": {
+      const u = Auth.listUsers().find((x) => x.id === id); if (!u) break;
+      if (!confirm(`Hapus akun "${u.name}"?`)) break;
+      const r = Auth.removeUser(id); if (r.error) toast(r.error); else { renderUsers(); update(); toast("Akun dihapus"); }
+      break;
+    }
   }
 }
 
@@ -206,11 +310,22 @@ export function initUI() {
   ["dragleave", "drop"].forEach((ev) => $("#drop").addEventListener(ev, (e) => { e.preventDefault(); $("#drop").classList.remove("drag"); }));
   $("#drop").addEventListener("drop", (e) => handleFile(e.dataTransfer.files[0]));
   $("#mOv").addEventListener("mousedown", (e) => { if (e.target.id === "mOv") closeForm(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeForm(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeForm(); closeAuth(); } });
   $("#pForm").addEventListener("submit", submitForm);
+  $("#authForm").addEventListener("submit", submitAuth);
+  $("#authOv").addEventListener("mousedown", (e) => { if (e.target.id === "authOv") closeAuth(); });
+  $("#importFile").addEventListener("change", (e) => { importData(e.target.files[0]); e.target.value = ""; });
+  $("#utbody").addEventListener("change", (e) => {
+    const sel = e.target.closest("select[data-user-role]"); if (!sel) return;
+    const r = Auth.setUserRole(Number(sel.dataset.userRole), sel.value);
+    if (r.error) toast(r.error); else toast("Role diperbarui ✓");
+    renderUsers();
+  });
+  addEventListener("hashchange", () => { if (location.hash === "#dashboard" && !allowed("dashboard")) { history.replaceState(null, "", "#home"); me() ? deny() : openAuth(); } });
   ["#q", "#cat", "#sort"].forEach((s) => $(s).addEventListener("input", renderCatalog));
   ["#custName", "#custNote"].forEach((s) => $(s).addEventListener("input", buildWA));
-  renderDash(); update();
+  renderAuth(); update();
+  if (location.hash === "#dashboard" && !allowed("dashboard")) { history.replaceState(null, "", "#home"); if (!me()) openAuth(); }
 }
 
 /* ===== Efek visual: partikel hero ===== */

@@ -314,3 +314,32 @@ footer p{color:#6d7f98}
 .wa-card:hover:not([disabled]){transform:translateY(-2px);box-shadow:0 10px 24px rgba(37,211,102,.45)}
 .wa-card[disabled]{background:#ffffff10;border-color:var(--line);color:#6d7f98;cursor:not-allowed;box-shadow:none}
 .add[disabled],.pick[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
+/* Pemberitahuan data (rusak / impor gagal) */
+.notice{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;margin:16px 0 0;padding:12px 14px;border:1px solid var(--red);border-radius:var(--radius);background:rgba(178,34,52,.14);color:var(--txt);font-size:14px;line-height:1.5}
+.notice[hidden]{display:none}
+.notice button{background:none;border:0;color:var(--mut);font-size:22px;line-height:1;cursor:pointer}
+
+
+/* ===== Auth & role ===== */
+.navbar .nav-links{margin-left:auto;margin-right:auto}
+.auth-slot{display:flex;align-items:center;gap:10px;margin:0 10px 0 0}
+.auth-btn{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:var(--radius);padding:8px 14px;cursor:pointer;font:inherit;font-weight:600}
+.auth-btn:hover{border-color:var(--red);color:var(--red)}
+.user-chip{display:flex;align-items:center;gap:8px;color:#fff;font-size:14px}
+.user-chip .uname{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.role-tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;background:#2b3a52;color:#cfd8e6}
+.role-tag.admin{background:var(--red);color:#fff}
+.role-tag.seller{background:#c98a1b;color:#fff}
+.role-tag.buyer{background:var(--green);color:#fff}
+.auth-tabs{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.auth-tabs button{flex:1;padding:12px;background:none;border:0;border-bottom:3px solid transparent;cursor:pointer;font:inherit;font-weight:700;color:var(--steel)}
+.auth-tabs button[aria-selected="true"]{color:var(--red);border-bottom-color:var(--red)}
+.auth-demo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:var(--steel);margin-top:4px;grid-column:1/-1}
+.auth-demo button{background:var(--light);border:1px solid var(--border);border-radius:99px;padding:4px 12px;cursor:pointer;font:inherit;font-size:12px}
+.auth-demo button:hover{border-color:var(--red)}
+.card .by{font-size:12px;color:var(--steel);margin:-2px 0 6px}
+#usersPanel{margin-top:40px}
+.users-head{margin-bottom:12px}
+.tbl select{padding:6px 8px;border-radius:8px;border:1px solid var(--border);font:inherit}
+[hidden]{display:none!important}
+@media(max-width:720px){.user-chip .uname{display:none}.auth-slot{margin-right:6px}}

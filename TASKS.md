@@ -266,7 +266,7 @@ Gunakan daftar ini untuk pemeriksaan akhir setelah perubahan kode.
 Item berikut **bukan task implementasi untuk versi prototype saat ini**. Jangan menambahkannya sebagai fitur wajib tanpa perubahan scope dan spesifikasi.
 
 - [ ] Backend API dan database server.
-- [ ] Autentikasi, otorisasi, dan role-based access control.
+- [x] ~~Autentikasi, otorisasi, dan role-based access control.~~ Kini tersedia sebagai simulasi sisi klien (admin/seller/buyer) — lihat SPEC.md bagian 2. Autentikasi server tetap di luar scope.
 - [ ] Sinkronisasi multi-user atau antarperangkat.
 - [ ] Penyimpanan keranjang secara persisten.
 - [ ] Checkout, pembayaran, payment gateway, atau pemrosesan transaksi.

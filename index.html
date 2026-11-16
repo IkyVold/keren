@@ -14,7 +14,8 @@
 <header>
 <div class="container navbar">
   <a href="#home" class="logo">Da <span>Bronx</span></a>
-  <nav class="nav-links"><a href="#home">Home</a><a href="#catalog">Arsenal</a><a href="#gallery">Galeri</a><a href="#dashboard">Dashboard</a></nav>
+  <nav class="nav-links"><a href="#home">Home</a><a href="#catalog">Arsenal</a><a href="#gallery">Galeri</a><a href="#dashboard" id="navDash" hidden>Dashboard</a></nav>
+  <div class="auth-slot" id="authSlot"></div>
   <button class="cart-btn" data-action="cart-open">🛒 Pilihan (<span id="cartCount">0</span>)</button>
 </div>
 </header>
@@ -28,7 +29,8 @@
     <h1>Built for <span>Professionals.</span><br>Trusted Worldwide.</h1>
     <p>Katalog senjata api taktis legendaris yang dipakai militer, penegak hukum, dan dunia hiburan. Pilih produk, kirim daftar pesanan langsung via WhatsApp.</p>
     <a href="#catalog" class="btn btn-red">Lihat Arsenal →</a>
-    <a href="#dashboard" class="btn btn-line">Dashboard</a>
+    <a href="#dashboard" class="btn btn-line" id="heroDash" hidden>Dashboard</a>
+    <button type="button" class="btn btn-line" id="heroLogin" data-action="auth-open">Masuk / Daftar</button>
   </div>
 </div>
 <div class="scroll-ind" aria-hidden="true"></div>
@@ -89,9 +91,10 @@
 </div>
 </section>
 
-<section class="dash" id="dashboard">
+<section class="dash" id="dashboard" hidden>
 <div class="container">
-  <div class="sec-head"><div><span class="tag">Management System</span><h2>Dashboard Pengelola</h2><p>Ringkasan inventori Da Bronx.</p></div><div class="dash-actions"><span class="pill">● Demo Dashboard</span><button class="btn-ghost" data-action="reset-data">↺ Reset</button><button class="btn-add" data-action="open-form">＋ Tambah Produk</button></div></div>
+  <div class="sec-head"><div><span class="tag">Management System</span><h2>Dashboard Pengelola</h2><p>Ringkasan inventori Da Bronx.</p></div><div class="dash-actions"><span class="pill" id="roleBadge">● Demo Dashboard</span><button class="btn-ghost" data-action="export-json" data-perm="data.export">⬇ Export JSON</button><button class="btn-ghost" data-action="import-json" data-perm="data.import">⬆ Import JSON</button><input type="file" id="importFile" accept="application/json,.json" hidden><button class="btn-ghost" data-action="reset-data" data-perm="data.reset">↺ Reset Demo</button><button class="btn-add" data-action="open-form" data-perm="product.create">＋ Tambah Produk</button></div></div>
+  <div class="notice" id="dataNotice" role="alert" hidden><span id="noticeText"></span><button type="button" data-action="close-notice" aria-label="Tutup pemberitahuan">×</button></div>
   <div class="stats">
     <div class="stat-card"><p>Total Produk</p><h3 id="dTotal">0</h3></div>
     <div class="stat-card"><p>Total Stok</p><h3 id="dStock">0</h3></div>
@@ -99,9 +102,18 @@
   </div>
   <div class="tbl">
     <table>
-      <thead><tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Status</th><th>Aksi</th></tr></thead>
+      <thead><tr><th>Produk</th><th>Penjual</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Status</th><th>Aksi</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table>
+  </div>
+  <div id="usersPanel" hidden>
+    <div class="sec-head users-head"><div><span class="tag">Admin</span><h2>Kelola Pengguna</h2><p>Ubah role atau hapus akun. Minimal satu admin harus tetap ada.</p></div></div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Aksi</th></tr></thead>
+        <tbody id="utbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 </section>
@@ -151,6 +163,31 @@
       <div class="err" id="pErr"></div>
     </div>
     <div class="m-foot"><button type="button" class="btn-ghost" data-action="close-form">Batal</button><button type="submit" class="btn-add" id="pSave">Simpan</button></div>
+  </form>
+</div>
+<!-- MODAL LOGIN / DAFTAR -->
+<div class="modal-ov" id="authOv">
+  <form class="modal" id="authForm" novalidate autocomplete="on">
+    <div class="m-head"><h3 id="authTitle">Masuk</h3><button type="button" data-action="auth-close" aria-label="Tutup">×</button></div>
+    <div class="auth-tabs" role="tablist">
+      <button type="button" role="tab" id="tabLogin" data-action="auth-tab" data-tab="login" aria-selected="true">Masuk</button>
+      <button type="button" role="tab" id="tabRegister" data-action="auth-tab" data-tab="register" aria-selected="false">Daftar</button>
+    </div>
+    <div class="m-body">
+      <div class="fld full" data-only="register"><label for="aName">Nama</label><input type="text" id="aName" maxlength="40" autocomplete="name" placeholder="Nama lengkap"></div>
+      <div class="fld full"><label for="aEmail">Email</label><input type="email" id="aEmail" maxlength="80" autocomplete="email" placeholder="nama@email.com"></div>
+      <div class="fld full"><label for="aPass">Kata sandi</label><input type="password" id="aPass" maxlength="72" autocomplete="current-password" placeholder="Minimal 6 karakter"></div>
+      <div class="fld full" data-only="register"><label for="aRole">Daftar sebagai</label>
+        <select id="aRole"><option value="buyer">Buyer — membeli produk</option><option value="seller">Seller — menjual produk</option></select></div>
+      <div class="err" id="authErr" role="alert"></div>
+      <div class="auth-demo" data-only="login">
+        <b>Akun demo</b> (klik untuk mengisi)
+        <button type="button" data-action="auth-fill" data-email="admin@dabronx.test" data-pass="admin123">Admin</button>
+        <button type="button" data-action="auth-fill" data-email="seller@dabronx.test" data-pass="seller123">Seller</button>
+        <button type="button" data-action="auth-fill" data-email="buyer@dabronx.test" data-pass="buyer123">Buyer</button>
+      </div>
+    </div>
+    <div class="m-foot"><button type="button" class="btn-ghost" data-action="auth-close">Batal</button><button type="submit" class="btn-add" id="authSubmit">Masuk</button></div>
   </form>
 </div>
 <div class="toast" id="toast"></div>

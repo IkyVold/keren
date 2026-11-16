@@ -405,7 +405,7 @@ Elemen kartu produk, baris tabel, drawer, dan toast dirender/dikelola melalui Ja
 ## 16. Batasan UI Saat Ini
 
 - Seluruh UI berada pada satu halaman HTML.
-- Dashboard tidak memiliki layar login atau pembatasan role.
+- Login/daftar memakai modal; navbar menampilkan tombol Masuk atau nama + badge role + Keluar. Dashboard hanya tampil untuk seller/admin; panel "Kelola Pengguna" hanya untuk admin.
 - Drawer dan modal merupakan overlay pada halaman yang sama.
 - Keranjang tidak dipertahankan setelah halaman dimuat ulang.
 - UI tidak menyediakan halaman checkout atau pembayaran.
